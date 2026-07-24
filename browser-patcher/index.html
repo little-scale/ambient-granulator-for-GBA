@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Offline sample-bank editor for Ambient Granulator for GBA">
+  <title>Ambient Granulator for GBA — Sample Patcher</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="masthead">
+      <div>
+        <h1>AMBIENT GRANULATOR GBA PATCHER</h1>
+        <p>sample-bank editor · all audio and ROM processing stays on this device</p>
+      </div>
+      <div class="format-stamp">PCM8 · MONO · 16384 HZ</div>
+    </header>
+
+    <section class="workflow" aria-label="Patching workflow">
+      <label id="rom-zone" class="drop-zone">
+        <input id="rom-input" type="file" accept=".gba,application/octet-stream">
+        <b>1 · LOAD GRANULATOR ROM</b>
+        <span id="rom-label">drop or choose an .gba file</span>
+      </label>
+      <label id="audio-zone" class="drop-zone disabled">
+        <input id="audio-input" type="file" accept="audio/*,.wav,.aif,.aiff,.flac,.mp3,.m4a,.ogg" multiple disabled>
+        <b>2 · ADD AUDIO</b>
+        <span id="audio-label">load a compatible ROM first</span>
+      </label>
+      <button id="export-button" class="export-button" type="button" disabled>
+        3 · EXPORT PATCHED ROM
+      </button>
+    </section>
+
+    <div id="status" class="status" role="status" aria-live="polite">
+      Load an Ambient Granulator for GBA ROM to begin.
+    </div>
+
+    <section class="budget-panel" aria-label="Bank capacity">
+      <div class="budget-heading">
+        <b>BANK CAPACITY</b>
+        <span id="budget-text">4.06 KB / 8.00 MB · 0/64 slots</span>
+      </div>
+      <div class="budget-bar" aria-hidden="true"><div id="budget-fill"></div></div>
+    </section>
+
+    <div class="workspace">
+      <aside class="sample-pool panel">
+        <div class="panel-heading">
+          <h2>SAMPLE POOL</h2>
+          <span id="sample-count">0</span>
+        </div>
+        <div id="sample-list" class="pool-list" aria-label="Samples">
+          <p class="empty">No samples loaded.</p>
+        </div>
+        <div class="pool-actions">
+          <button id="move-up" type="button" disabled>MOVE UP</button>
+          <button id="move-down" type="button" disabled>MOVE DOWN</button>
+          <button id="remove" type="button" disabled>REMOVE</button>
+        </div>
+      </aside>
+
+      <section class="editor panel">
+        <div class="panel-heading">
+          <h2>SAMPLE EDITOR</h2>
+          <div class="transport">
+            <button id="play" type="button" disabled>PLAY</button>
+            <button id="stop" type="button" disabled>STOP</button>
+          </div>
+        </div>
+        <canvas id="waveform" class="waveform" width="1200" height="300"
+          aria-label="Waveform with draggable IN and OUT trim boundaries"></canvas>
+        <p class="hint">Drag the IN and OUT lines to trim. Grey audio is excluded. Imported audio is downmixed equally, resampled and peak-normalised before gain is applied.</p>
+
+        <div class="editor-grid">
+          <label>NAME
+            <input id="name" type="text" maxlength="31" disabled>
+          </label>
+          <label>GAIN
+            <input id="gain" type="number" min="-48" max="18" step="0.5" value="0" disabled>
+            <span class="unit">DB</span>
+          </label>
+          <label>TRIM IN
+            <input id="trim-in" type="number" min="0" step="1" value="0" disabled>
+            <span class="unit">MS</span>
+          </label>
+          <label>TRIM OUT
+            <input id="trim-out" type="number" min="0" step="1" value="0" disabled>
+            <span class="unit">MS</span>
+          </label>
+        </div>
+
+        <div class="sample-stats">
+          <div><span>SOURCE</span><b id="source-stat">—</b></div>
+          <div><span>PREPARED</span><b id="duration-stat">—</b></div>
+          <div><span>ROM COST</span><b id="size-stat">—</b></div>
+          <div><span>ORIGIN</span><b id="origin-stat">—</b></div>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      Compatible ROMs contain one <code>GBAGRN01</code> bank. The GBA header is validated before patching and preserved byte-for-byte on export.
+    </footer>
+  </main>
+  <script src="bank.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

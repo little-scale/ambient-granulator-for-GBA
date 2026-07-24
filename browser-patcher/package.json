@@ -1,0 +1,13 @@
+{
+  "name": "ambient-granulator-gba-patcher",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build-standalone.mjs",
+    "test": "node --test tests/*.test.cjs",
+    "test:rom": "node scripts/make-test-rom.cjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

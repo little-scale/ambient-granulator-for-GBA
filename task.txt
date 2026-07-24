@@ -1,0 +1,1218 @@
+# Ambient Granulator for GBA — Technical Porting Handover
+
+## 1. Project objective
+
+Create a native Game Boy Advance version of **Ambient Granulator for NDS** that preserves its most important musical and visual qualities:
+
+1. Black-and-white SNESDJ-inspired interface
+2. Waveform display, position line, range boundaries and live grain indicators
+3. Granular triggering with BPM, divisions, free interval and jitter
+4. Stereo feedback reverb with a convincing, stable Freeze mode
+5. Stereo high-pass and low-pass filtering
+6. Runtime sample browser
+7. Offline browser patcher
+8. Reliable operation on physical GBA hardware and common flashcarts
+
+This is not intended to be a literal source-level port. Treat the NDS release as the behavioural and visual reference while rebuilding the hardware-facing layers for GBA.
+
+The GBA version does not require:
+
+- Touch input
+- Microphone recording
+- Wi-Fi
+- OSC
+- Nintendo DS compatibility
+- DLDI or NitroFS
+
+## 2. Reference implementation
+
+The complete NDS source is located at:
+
+`/Users/a1106632/Documents/nds-locked-granulator `
+
+Note that this directory currently has a trailing space.
+
+GitHub repository:
+
+https://github.com/little-scale/ambient-granulator-for-NDS
+
+Reference release:
+
+https://github.com/little-scale/ambient-granulator-for-NDS/releases/tag/v0.1
+
+Reference tag:
+
+`v0.1`
+
+Reference commit:
+
+`a8d64b9e4355ea65212b4557388d8f17a77572c9`
+
+Do not modify the NDS repository while building the GBA version. Create a separate folder and Git repository.
+
+The NDS software is MIT licensed. The included samples by Sebastian Tomczak are licensed under CC BY 4.0.
+
+## 3. Platform constraints
+
+The GBA has:
+
+- ARM7TDMI CPU at approximately 16.78 MHz
+- 32 KB fast internal work RAM
+- 256 KB external work RAM
+- 96 KB video RAM
+- 240×160 display
+- Two DMA-fed Direct Sound FIFOs
+- Signed 8-bit PCM output through Direct Sound
+- Memory-mapped Game Pak ROM
+- Up to 32 MB addressable cartridge ROM
+- D-pad, A, B, L, R, Start and Select
+- No touchscreen
+- No built-in microphone
+- No IP networking
+
+Useful references:
+
+- [GBATEK GBA hardware reference](https://mgba-emu.github.io/gbatek/)
+- [Maxmod GBA hardware usage](https://maxmod.org/ref/articles/HardwareUsage.html)
+- [Maxmod GBA programming guide](https://blocksds.skylyrac.net/maxmod/md_documentation_2gba__programming__guide.html)
+
+Maxmod demonstrates the established GBA pattern: Timer 0 clocks audio while DMA 1 and DMA 2 feed the two Direct Sound FIFOs. The granular engine needs custom sample scheduling and DSP, so use Maxmod as a hardware reference rather than assuming its high-level sample API can replace the custom mixer.
+
+## 4. Proposed repository
+
+Suggested folder:
+
+`/Users/a1106632/Documents/ambient-granulator-gba`
+
+Suggested structure:
+
+```text
+ambient-granulator-gba/
+├── Makefile
+├── README.md
+├── CHANGELOG.md
+├── LICENSE
+├── samples/
+│   ├── LICENSE.md
+│   └── *.wav
+├── source/
+│   ├── main.c
+│   ├── parameters.c
+│   ├── parameters.h
+│   ├── input.c
+│   ├── input.h
+│   ├── ui.c
+│   ├── ui.h
+│   ├── font.c
+│   ├── font.h
+│   ├── waveform.c
+│   ├── waveform.h
+│   ├── audio.c
+│   ├── audio.h
+│   ├── grain.c
+│   ├── grain.h
+│   ├── scheduler.c
+│   ├── scheduler.h
+│   ├── reverb.c
+│   ├── reverb.h
+│   ├── filter.c
+│   ├── filter.h
+│   ├── sample_bank.c
+│   └── sample_bank.h
+├── tests/
+│   ├── timing_test.c
+│   ├── position_test.c
+│   ├── controls_test.c
+│   ├── reverb_test.c
+│   ├── filter_test.c
+│   └── bank_test.*
+├── tools/
+│   ├── Dockerfile
+│   ├── build-sample-bank.*
+│   └── render-audio-test.*
+├── scripts/
+│   ├── setup.sh
+│   ├── build.sh
+│   ├── test-host.sh
+│   ├── test-mgba.sh
+│   └── release.sh
+├── browser-patcher/
+└── build/
+```
+
+Keep platform-independent DSP functions separate from GBA register and DMA code. They must compile on the host for regression testing.
+
+## 5. Toolchain setup
+
+Use the current devkitPro GBA toolchain:
+
+- devkitARM
+- libgba
+- GBA build tools, including `gbafix`
+- SoX for sample preparation
+- mGBA for emulation
+- Node.js for the browser patcher
+
+Prefer a reproducible Docker toolchain, as in the NDS project. Use an official devkitPro/devkitARM base image or install the official `gba-dev` package through devkitPro’s package manager. Verify the current image and package names against current devkitPro documentation before writing the Dockerfile.
+
+The first toolchain milestone must produce a `.gba` ROM that:
+
+- Boots in mGBA
+- Boots on physical GBA-compatible hardware
+- Draws black and white test graphics
+- Reads every button
+- Plays a different tone in the left and right channels
+- Reports an audio underrun counter
+- Produces a screenshot suitable for automated pixel inspection
+
+Do not begin porting the granular engine until this diagnostic ROM works.
+
+### Suggested initial build pipeline
+
+```text
+C/assembly source
+        ↓
+devkitARM compiler/linker
+        ↓
+ELF
+        ↓
+objcopy
+        ↓
+.gba ROM
+        ↓
+gbafix header/checksum
+```
+
+Set a short GBA header title, since the hardware title field is limited. A suitable internal title would be:
+
+`AMBGRANULAR`
+
+The distributed filename can remain descriptive:
+
+`ambient-granulator-for-gba-v0.1.gba`
+
+## 6. High-level architecture
+
+Use three runtime layers:
+
+```text
+Main loop / UI
+    ├── input state
+    ├── parameter editing
+    ├── sample browser
+    ├── waveform rendering
+    └── grain-marker animation
+
+Audio control layer
+    ├── grain requests
+    ├── sample-accurate scheduler
+    ├── parameter snapshots
+    └── UI marker queue
+
+Audio render layer
+    ├── grain voices
+    ├── dry stereo mix
+    ├── FDN reverb and Freeze
+    ├── wet/dry mix
+    ├── HPF and LPF
+    └── PCM8 output buffers
+```
+
+The audio render layer must never call UI functions, allocate memory, read the filesystem or perform expensive formatting.
+
+Use small lock-free request structures between the main loop and audio engine, following the NDS project’s serial-number and marker-queue approach.
+
+## 7. Audio output architecture
+
+Retain the NDS sample rate:
+
+`16,384 Hz`
+
+This is particularly suitable for the GBA because the approximately 16.78 MHz system clock divides cleanly to this rate. The initial hardware spike should verify the exact timer reload and FIFO behaviour on hardware.
+
+Recommended output arrangement:
+
+- FIFO A routed left only
+- FIFO B routed right only
+- DMA 1 feeds FIFO A
+- DMA 2 feeds FIFO B
+- Timer 0 clocks both FIFOs
+- Internal mixer uses signed 16-bit or 32-bit values
+- Final output is saturated and quantised to signed PCM8
+- Audio buffers are double-buffered or ring-buffered
+- Buffer switching occurs in a minimal interrupt handler
+- Mixing occurs outside the interrupt
+
+Start with 256 output samples per channel per block:
+
+- 256 samples at 16,384 Hz is approximately 15.6 ms
+- Two stereo PCM8 buffers require only 1 KB
+- Latency remains acceptable
+- CPU load can be measured per block
+
+If the DMA/FIFO implementation makes 256-sample switching unreliable, test 512-sample blocks, but do not accept unnecessary latency without hardware evidence.
+
+Maintain:
+
+```c
+volatile uint32_t audio_underruns;
+volatile uint32_t audio_blocks_rendered;
+volatile uint32_t worst_mix_cycles;
+```
+
+A release build should run for at least ten minutes at the maximum supported grain/reverb load without incrementing `audio_underruns`.
+
+### Memory placement
+
+Place the following in the 32 KB fast internal RAM where possible:
+
+- Audio mixer hot code
+- Voice structures
+- Current audio output buffers
+- Filter state
+- Scheduler state
+- Parameter snapshot
+- Small lookup tables
+
+Place the following in external work RAM:
+
+- Reverb delay lines
+- UI backing state
+- Waveform display summaries
+- Less time-critical buffers
+
+Read sample PCM directly from Game Pak ROM. Do not copy complete samples into RAM.
+
+The mixer should execute from internal RAM so cartridge-bus instruction fetches do not compete with sample reads. Enable Game Pak prefetch only after testing flashcart compatibility.
+
+## 8. Sample representation
+
+For the first GBA implementation use:
+
+- Mono
+- Signed PCM8
+- 16,384 Hz
+- Peak normalised to −0.3 dBFS
+- Directly addressable in ROM
+- 32-byte aligned starts
+- No compression
+
+PCM8 is recommended because:
+
+- It matches the final Direct Sound output resolution
+- It halves ROM size relative to PCM16
+- Random grain positions remain constant-time
+- It avoids ADPCM decoder state and seek complications
+- It reduces cartridge bandwidth
+
+Inside the mixer:
+
+```c
+int sample16 = ((int)sample8) << 8;
+```
+
+Then apply the envelope and stereo gains at higher precision.
+
+Do not store reverb delay lines as PCM8. Keep them signed 16-bit so Freeze does not rapidly degrade into quantisation noise.
+
+## 9. Proposed GBA sample-bank format
+
+Use a GBA-specific magic value rather than reusing the NDS signature:
+
+`GBAGRN01`
+
+Suggested 64-byte header:
+
+```text
+Offset  Size  Meaning
+0       8     Magic: GBAGRN01
+8       4     Bank version
+12      4     Fixed bank capacity
+16      4     Sample count
+20      4     Used bytes
+24      4     Sample rate: 16384
+28      4     Entry size: 64
+32      4     Maximum entries: 64
+36      4     Data offset: 4160
+40      4     Sample format: 1 = signed PCM8 mono
+44      4     Waveform columns: 240
+48      16    Reserved
+```
+
+Suggested 64-byte sample entry:
+
+```text
+Offset  Size  Meaning
+0       32    Null-terminated sample name
+32      4     PCM offset from bank start
+36      4     PCM length in bytes/samples
+40      4     PCM CRC32
+44      4     Waveform-summary offset
+48      4     Waveform-summary length
+52      4     Flags
+56      8     Reserved
+```
+
+For each sample, store a precomputed waveform summary:
+
+- 240 signed minimum values
+- 240 signed maximum values
+- 480 bytes total
+
+This prevents the GBA from rescanning a multi-megabyte sample whenever it is selected.
+
+The waveform summary must be generated from the final PCM8 data, after resampling, normalisation and quantisation.
+
+### Bank embedding
+
+Embed the fixed-capacity bank as a referenced read-only ROM section using a generated assembly file or binary object.
+
+For example:
+
+```asm
+.section .rodata.sample_bank, "a", %progbits
+.align 5
+.global gba_sample_bank
+gba_sample_bank:
+.incbin "assets/sample_bank.bin"
+.global gba_sample_bank_end
+gba_sample_bank_end:
+```
+
+Ensure the linker retains this section and does not copy it into RAM.
+
+At runtime, sample selection should only update:
+
+- ROM pointer
+- Sample length
+- Waveform-summary pointer
+- Current sample index
+
+No file APIs are required.
+
+Start with an 8 MiB bank. PCM8 at 16,384 Hz gives approximately 8.5 minutes of total mono audio in 8 MiB. If hardware and flashcart testing is clean, offer an optional 16 MiB bank build. Code plus a 16 MiB bank will generally require a 32 MiB ROM image.
+
+## 10. Sample preparation
+
+The command-line builder should:
+
+1. Discover WAV files in `samples/`
+2. Sort them deterministically
+3. Downmix all channels equally to mono
+4. Resample to 16,384 Hz
+5. Peak-normalise each sample to −0.3 dBFS
+6. Quantise to signed PCM8
+7. Verify the resulting peak
+8. Generate the 240-column waveform summary
+9. Calculate CRC32
+10. Pack the fixed-capacity bank
+11. Fail if the bank is too large
+12. Print per-sample format, duration, peak and byte count
+
+Silent samples must remain silent.
+
+For signed PCM8, the expected −0.3 dBFS peak will be approximately magnitude 124, subject to the chosen signed scaling and rounding convention. Test this explicitly rather than assuming it.
+
+Keep sample conversion deterministic. If dither is added, use a deterministic seed and document it.
+
+## 11. Granular engine
+
+Port the following concepts from the NDS project:
+
+- Fixed pool of grain voices
+- Q16 source position
+- Precomputed pitch-step table
+- Per-grain start position
+- Per-grain attack/release
+- Per-grain pan
+- Pan deviation
+- Position range
+- Pitch deviation
+- Round-robin voice stealing
+- Sample-accurate scheduling
+- Lock-free grain-marker queue
+
+Start with two voices. Once stable, increase to four.
+
+The current NDS voice structure is conceptually:
+
+```c
+typedef struct {
+    bool active;
+    const int8_t *source_rom;
+    uint32_t position_q16;
+    uint32_t step_q16;
+    int source_length;
+    int attack_samples;
+    int release_samples;
+    int attack_gain_step;
+    int release_gain_step;
+    int left_gain;
+    int right_gain;
+} GrainVoice;
+```
+
+Keep the existing pitch-step table initially. In the NDS table, zero semitones results in a Q16 step of 65,536.
+
+The current NDS implementation uses nearest-neighbour playback. Preserve this for the first GBA version. Interpolation can be evaluated only after the complete engine is stable and profiled.
+
+Important behavioural detail: the existing grain length is expressed in source samples. Pitch therefore affects the audible duration. Preserve this behaviour for parity; do not silently “correct” it during the initial port.
+
+## 12. Scheduler
+
+Port `grain_timing.h` and `grain_position.h` first. They are already platform-independent and have host tests.
+
+The synchronized interval is:
+
+```text
+samples = round(sample_rate × 240 / (BPM × denominator))
+```
+
+Supported denominators:
+
+- 8
+- 16
+- 32
+- 64
+
+The free-running interval is:
+
+```text
+samples = round(sample_rate × interval_ms / 1000)
+```
+
+Jitter is symmetrical:
+
+```text
+jitter_samples = base_interval × jitter_percent / 100
+delay = base_interval + random(-jitter_samples, +jitter_samples)
+```
+
+Clamp the final delay to at least one sample.
+
+Current default values:
+
+```text
+CLOCK       SYNC
+BPM         98
+DIVISION    1/8
+INTERVAL    120 ms
+JITTER      20%
+GRAINS      8
+```
+
+Holding the performance trigger must continue generating complete bursts until released. Releasing the button should allow the current burst to finish.
+
+## 13. Position range
+
+Preserve both range modes:
+
+- Positive Range: bipolar deviation from `−range` through `+range`
+- Negative Range: forward-only deviation from zero through `abs(range)`
+- Zero: exact current position
+
+Current range:
+
+`−128 … +128 pixels`
+
+For the 240-pixel GBA screen, either retain this numeric range and clamp positions to `0…239`, or change the extrema to `−120…+120`. Prefer retaining the NDS numeric parameter for familiarity unless hardware testing identifies a usability problem.
+
+Current default:
+
+`+−24 px`
+
+## 14. Reverb and Freeze
+
+This is a priority feature, not an optional late-stage effect.
+
+Port the current stereo four-line FDN before considering a completely new algorithm.
+
+Current constants:
+
+```text
+Sample rate:          16,384 Hz
+FDN lines:            4
+Maximum delay/line:   2,048 samples
+Base lengths:         421, 613, 809, 1013
+Size scale:           55 + SIZE%
+Delay storage:        signed 16-bit
+Feedback:             Q15
+Damping:              one pole per line
+Matrix:               normalized Hadamard-style
+```
+
+At the current default `SIZE 100%`, the effective line lengths are approximately:
+
+```text
+652, 950, 1253, 1570 samples
+```
+
+Delay memory is:
+
+```text
+4 × 2048 × 2 bytes = 16 KB
+```
+
+This fits comfortably in external work RAM.
+
+### Stereo excitation
+
+Preserve the current orthogonal encoder:
+
+```c
+line0 = (left + right) >> 2;
+line1 = (left - right) >> 2;
+line2 = (left + right) >> 2;
+line3 = (-left + right) >> 2;
+```
+
+Preserve the matching decoder:
+
+```c
+left  = (line0 + line1 + line2 - line3) >> 2;
+right = (line0 - line1 + line2 + line3) >> 2;
+```
+
+This prevents hard-panned grains from collapsing to a mono reverb input.
+
+### Freeze semantics
+
+Freeze must behave exactly as follows:
+
+1. Set effective feedback to unity:
+   `32768` in Q15
+2. Send zero new input into every FDN line
+3. Bypass normal damping updates
+4. Preserve the user’s stored Feedback and Damp parameters
+5. Continue circulating the existing stereo texture
+6. Continue allowing dry grains to sound when wet/dry is below 100%
+7. Restore the stored Feedback and Damp behaviour when Freeze is disabled
+
+Do not implement Freeze as “feedback 100% while still accepting input.” That will accumulate energy and clip.
+
+### Stability requirements
+
+Internally saturate values before storing them in delay memory.
+
+Test:
+
+- Freeze after a single impulse
+- Freeze after dense stereo grains
+- Trigger new grains while frozen
+- Toggle Freeze repeatedly
+- Leave Freeze enabled for at least 60 seconds
+- Confirm no runaway amplitude
+- Confirm stereo information remains
+- Confirm frozen texture is not overwritten by new grains
+
+### Performance fallback
+
+Attempt the full four-line FDN first.
+
+If profiling shows that it cannot meet the audio deadline:
+
+1. Move the FDN render function into internal RAM
+2. Remove divisions and modulo from the inner loop
+3. Precompute all coefficients
+4. Use 32-bit fixed-point multiplies
+5. Unroll the four-line matrix
+6. Reduce UI redraw cost
+7. Consider two-line reverb only as the final fallback
+
+Do not reduce the reverb before profiling proves it necessary.
+
+## 15. Filters
+
+Keep the filters after the wet/dry reverb mix:
+
+```text
+grains
+  ↓
+dry stereo
+  ↓
+FDN wet stereo
+  ↓
+wet/dry crossfade
+  ↓
+HPF
+  ↓
+LPF
+  ↓
+PCM8 output
+```
+
+Parameters:
+
+```text
+HPF: OFF, then 50–4000 Hz
+LPF: 200–7950 Hz, then OFF at 8000 Hz
+```
+
+Each channel must have independent filter state.
+
+The current NDS filters use first-order fixed-point coefficients and 64-bit intermediate multiplication. Avoid 64-bit multiplication in the GBA per-sample loop if profiling shows it is expensive.
+
+Preferred approach:
+
+- Calculate coefficients only when the parameter changes
+- Use a safe Q14 or Q15 representation
+- Clamp intermediate differences before multiplication
+- Use 32-bit multiply paths where possible
+- Keep independent left/right state
+- Preserve 6 dB/octave behaviour
+
+The filters must also shape a frozen texture without altering the audio circulating inside the FDN.
+
+## 16. GUI strategy
+
+Use a strict black-and-white interface.
+
+Recommended video mode:
+
+- GBA Mode 4
+- 8-bit paletted bitmap
+- Palette entry 0: black
+- Palette entry 1: white
+
+This makes inversion cheap and reduces framebuffer bandwidth.
+
+Use the existing custom 5×7 font, but change the cell geometry from 8×8 to approximately 7×8. The current grid needs more than 30 columns; 7-pixel cells allow the two-column layout to fit within 240 pixels.
+
+### Screen layout
+
+Use two primary views.
+
+#### Edit view
+
+```text
+Y 0–127:   parameter editor
+Y 128–159: compact live waveform strip
+```
+
+Removing the NDS networking, microphone and help rows leaves enough room for the important parameters.
+
+Preserve:
+
+- White background
+- Black text
+- Underlined section headings
+- Two parameter columns
+- Five-character right-aligned values
+- Selected value shown as a black block with white text
+- Grid-based horizontal and vertical navigation
+- `P DEV` for pitch deviation in the left column
+- `P DEV` for pan deviation in the right column
+
+Suggested grouping:
+
+```text
+GRAIN / CLOCK              VOICE / FX
+RANGE                      LENGTH
+PITCH                      ATTACK
+P DEV                      RELEASE
+
+CLOCK                      GAIN
+BPM                        VOL
+DIV                        PAN
+INTERVAL                   P DEV
+JITTER
+
+GRAINS                     REV
+                           FEEDBACK
+POSITION                   SIZE
+                           DAMP
+                           FREEZE
+                           HPF
+                           LPF
+```
+
+#### Performance view
+
+Use a full-screen waveform:
+
+- Black background
+- White waveform
+- Solid white position line
+- No arrow or top marker
+- Two-pixel dashed white range boundaries
+- Four-pixel grain indicators
+- Grain indicators invert the waveform only
+- Pixels outside the waveform amplitude remain black
+- Grain indicators are centred around the waveform zero line
+- Approximately 300 ms marker lifetime
+- Compact status row for sample, BPM/division and Freeze state
+
+Start in Performance view.
+
+### Waveform summary
+
+Use the precomputed 240-column minimum/maximum pairs from the bank.
+
+For every column:
+
+```text
+top_y    = zero_y - scaled_max
+bottom_y = zero_y - scaled_min
+```
+
+Draw a vertical white line between `top_y` and `bottom_y`.
+
+The waveform display must represent the final PCM8 data actually played by the engine.
+
+### Grain indicators
+
+The audio engine pushes grain start positions into a small lock-free queue.
+
+The UI drains the queue once per frame and creates markers:
+
+```c
+typedef struct {
+    uint8_t x;
+    uint8_t ttl;
+} GrainMarker;
+```
+
+Use approximately 16 visible markers and a 32-entry queue.
+
+To draw a marker:
+
+- Cover four horizontal pixels centred on the start position
+- Limit the vertical area to the waveform’s current min/max range
+- XOR black and white pixels
+- Do not invert empty background pixels
+- Decrement TTL every video frame
+
+## 17. Input mapping
+
+No touch input is required.
+
+### Performance view
+
+```text
+Left/Right       Move position by 1 pixel
+Up/Down          Move position by 8 pixels
+Hold A           Continuously trigger complete grain bursts
+Tap B            Trigger one configured burst
+L                Toggle Freeze
+Start            Toggle Edit view
+Select           Open sample browser
+R + D-pad        Reserved for accelerated position movement
+```
+
+### Edit view
+
+```text
+D-pad            Move between parameter fields
+B + Left/Right   Fine edit
+B + Up/Down      Coarse edit
+Tap B            Trigger one burst
+L                Toggle Freeze
+Start            Return to Performance view
+Select           Open sample browser
+```
+
+Retain the existing distinction between a B tap and B-modified edit:
+
+```c
+if (B pressed)
+    b_used = false;
+
+if (B held && D-pad pressed) {
+    edit_parameter();
+    b_used = true;
+}
+
+if (B released && !b_used)
+    trigger_burst();
+```
+
+### Sample browser
+
+```text
+Up/Down          Move one sample
+Left/Right       Page through samples
+B or A           Load selected sample
+Select           Cancel and return
+```
+
+Loading a sample should be instant because it only changes ROM pointers and waveform-summary pointers.
+
+## 18. Sample browser
+
+Preserve the NDS browser’s visual grammar:
+
+- White background
+- Black heading
+- Black inverted selection bar
+- Sample count in the heading
+- Numbered sample rows
+- Current sample indicator
+- No thumbnails or colour decoration
+
+The browser should read names and lengths directly from the bank header.
+
+No FAT filesystem is required for the initial version. Samples are patched into the ROM.
+
+## 19. Browser patcher
+
+Start from:
+
+`/Users/a1106632/Documents/nds-locked-granulator /browser-patcher`
+
+Preserve:
+
+- Standalone, non-server HTML build
+- Drag-and-drop ROM loading
+- Audio file import
+- Waveform preview
+- Trim boundaries
+- Gain
+- Preview playback
+- Sample renaming
+- Reordering
+- Removal
+- Capacity display
+- Patched ROM export
+- Entirely local browser processing
+
+Replace:
+
+- NDS bank magic with `GBAGRN01`
+- PCM16 encoding with signed PCM8
+- NDS assumptions with GBA ROM validation
+- Two-byte sample-size estimates with one-byte estimates
+- NDS bank entry decoder with the GBA bank format
+- NDS filename language with GBA filename language
+
+On audio import:
+
+1. Decode with Web Audio
+2. Downmix channels equally
+3. Resample to 16,384 Hz
+4. Establish a −0.3 dBFS baseline
+5. Apply user trim and baked gain
+6. Display and preview exactly what export will encode
+7. Generate the 240-column summary
+8. Quantise to signed PCM8
+9. Update CRC32
+
+Because user gain is intentional, do not automatically renormalise after every gain change. The initial import can establish the −0.3 dBFS baseline; subsequent gain must remain visible and audible.
+
+The patcher should locate exactly one bank signature and reject ROMs with zero or multiple matches.
+
+Patching the body of a GBA ROM should not alter the GBA header fields. Nevertheless, verify the resulting ROM with `gbafix` or an independent header checker during tests.
+
+## 20. Source mapping from NDS
+
+### Reuse with minor changes
+
+```text
+source/grain_timing.h
+source/grain_position.h
+tests/timing_test.c
+tests/position_test.c
+pitch-step lookup table
+Parameter structure and ranges
+value formatting logic
+grid-navigation algorithm
+5×7 font
+fixed-point pan logic
+wet/dry crossfade
+stereo FDN encoder/decoder
+first-order filter design
+marker queue design
+```
+
+### Rework substantially
+
+```text
+source/main.c
+audio stream callback
+framebuffer setup
+input handling
+sample-bank loading
+waveform rendering dimensions
+reverb performance implementation
+output filters’ per-sample multiply path
+browser-patcher/app/bank.ts
+sample-bank build script
+```
+
+### Remove
+
+```text
+network.c / network.h
+osc.c / osc.h
+microphone PCM support
+NitroFS
+DLDI/FAT fallback
+Nintendo DS ARM7 microphone service
+DS Wi-Fi state
+touch input
+dual-screen setup
+NDS-specific maxmod streaming
+```
+
+## 21. Development sequence
+
+### Phase 0 — Toolchain and repository
+
+- Create the new folder and Git repository
+- Add README, MIT licence and CC BY 4.0 sample notice
+- Establish Docker/native build
+- Produce a blank `.gba`
+- Add mGBA launch script
+- Confirm physical flashcart boot
+
+Exit criterion: reproducible ROM builds locally and in a clean environment.
+
+### Phase 1 — Hardware diagnostic
+
+Implement:
+
+- Mode 4 black/white display
+- Font rendering
+- Button-state display
+- FIFO A/B stereo tones
+- Timer/DMA audio
+- Underrun counter
+
+Exit criterion: stable stereo output and responsive input on emulator and hardware.
+
+### Phase 2 — GUI shell
+
+Implement:
+
+- Edit view
+- Performance waveform view
+- View switching
+- Parameter table
+- Inverted selection
+- Grid navigation
+- Placeholder waveform and markers
+- Sample-browser page
+
+Exit criterion: visual identity matches the NDS instrument before audio is ported.
+
+### Phase 3 — ROM sample bank
+
+Implement:
+
+- `GBAGRN01`
+- PCM8 packing
+- Waveform summaries
+- ROM embedding
+- Runtime bank validation
+- Instant sample pointer selection
+
+Exit criterion: two samples can be browsed, selected and drawn without copying PCM to RAM.
+
+### Phase 4 — Dry granular engine
+
+Implement:
+
+- DMA output buffers
+- Two voices
+- Q16 pitch stepping
+- Position mapping
+- Attack/release
+- Gain
+- Pan and pan deviation
+- Audio-to-UI marker queue
+
+Then increase to four voices.
+
+Exit criterion: four voices can run at maximum grain length without underruns.
+
+### Phase 5 — Scheduler
+
+Port:
+
+- Free interval
+- BPM
+- 1/8–1/64 divisions
+- Jitter
+- Grain count
+- Held-trigger burst continuation
+
+Exit criterion: zero-jitter intervals are exact at the audio-sample level.
+
+### Phase 6 — Reverb and Freeze
+
+Implement full four-line FDN, stereo excitation, wet/dry, feedback, size, damping and Freeze.
+
+Exit criterion: Freeze remains stable for at least 60 seconds and ignores new FDN input.
+
+### Phase 7 — HPF and LPF
+
+Add post-reverb stereo filtering.
+
+Exit criterion: host impulse tests and hardware listening confirm correct bypass and cutoff behaviour.
+
+### Phase 8 — Browser patcher
+
+Fork the NDS patcher and implement the GBA bank.
+
+Exit criterion: patch a built `.gba`, reopen it, verify CRCs and run the patched result on hardware.
+
+### Phase 9 — Optimisation
+
+Profile before changing algorithms.
+
+Optimisation order:
+
+1. Move hot mixer code to internal RAM
+2. Precompute parameter coefficients
+3. Remove 64-bit per-sample operations
+4. Eliminate division/modulo in render loops
+5. Reduce framebuffer work
+6. Add per-voice ROM read cache only if required
+7. Reduce reverb lines only if all previous steps fail
+
+### Phase 10 — Release preparation
+
+- Full hardware soak test
+- mGBA regression
+- Offline audio regression
+- Standalone patcher build
+- README Quickstart
+- Changelog
+- Release notes
+- `.gba` binary
+- SHA-256 checksum
+
+## 22. Testing requirements
+
+### Host-side unit tests
+
+Retain and expand:
+
+- Every BPM/division combination
+- Free interval conversion
+- Zero-jitter exact timing
+- Jitter bounds
+- Bipolar and forward-only Range
+- Pitch-step lookup
+- Envelope endpoints
+- Pan endpoints
+- Wet/dry endpoints
+- Filter bypass
+- Filter step response
+- FDN stereo encoder/decoder
+- Bank offsets and bounds
+- CRC32
+- PCM8 quantisation
+- Waveform-summary generation
+
+### Offline audio renderer
+
+Compile the DSP core for the host and render test WAV files.
+
+Tests should include:
+
+- Single grain
+- Four simultaneous grains
+- Hard-left and hard-right reverb excitation
+- Impulse through reverb
+- Freeze after impulse
+- Freeze while triggering new dry grains
+- HPF response
+- LPF response
+- Maximum feedback stability
+- Maximum gain saturation
+
+### Emulator regression
+
+Automate mGBA where practical:
+
+- Boot screenshot
+- Parameter selection inversion
+- Grid navigation
+- Performance/Edit switching
+- Position movement
+- Held trigger
+- Grain-marker appearance
+- Freeze toggle
+- Sample-browser selection
+- Non-silent audio output
+
+### Hardware acceptance
+
+Test on at least one physical GBA-family target and flashcart.
+
+Required:
+
+- Ten-minute maximum-load playback
+- Sixty-second Freeze
+- Repeated Freeze toggling
+- Both samples
+- Patched ROM
+- Headphones for stereo verification
+- No clicks during parameter edits
+- No audio underruns
+- No corrupted waveform
+- No delayed or missed buttons
+
+Remember that the GBA’s built-in speaker is mono. Stereo panning and stereo FDN behaviour must be evaluated through headphones or stereo line capture.
+
+## 23. Performance targets
+
+At maximum supported load:
+
+- Four active grains
+- 500 ms grain length
+- Maximum trigger density
+- 99% feedback
+- Four-line FDN
+- HPF and LPF enabled
+- Animated grain markers
+
+Target:
+
+- No DMA underruns
+- Audio block mixing below 60% of the available block deadline
+- At least 40% timing headroom
+- Stable 60 Hz-class interface response
+- Parameter changes audible within one audio block
+- Position movement visually immediate
+- No heap allocation after startup
+
+If four grains plus the full FDN cannot meet this target, profile and optimise before reducing features.
+
+## 24. Behavioural acceptance criteria
+
+The port is successful when:
+
+- It is immediately recognisable as Ambient Granulator
+- The edit screen retains the black/white tracker character
+- The waveform remains visually central to performance
+- Position, range and grain starts are clearly visible
+- Holding A produces continuous complete bursts
+- BPM/division timing is sample accurate at zero jitter
+- Jitter remains bounded and musical
+- Feedback rings naturally at 99%
+- Freeze captures a stereo texture without accepting new FDN input
+- New dry grains remain audible during Freeze when REV is below 100%
+- HPF and LPF shape both grains and frozen reverb output
+- Samples switch instantly
+- The standalone patcher produces hardware-working ROMs
+- Physical hardware runs without audio underruns
+
+## 25. First task for the new thread
+
+Begin only with Phase 0 and Phase 1.
+
+The first deliverable should be:
+
+1. A new GBA project folder
+2. Reproducible devkitARM/libgba toolchain
+3. Build scripts
+4. `.gba` diagnostic ROM
+5. Mode 4 black/white display
+6. Button visualisation
+7. DMA-fed stereo FIFO tones
+8. mGBA test loop
+9. Physical-hardware test instructions
+10. README documenting setup and build
+
+Do not port the granular engine until the diagnostic ROM proves that graphics, input, stereo DMA audio and the build/test loop are reliable.

@@ -1,0 +1,9 @@
+build/
+build-*/
+assets/sample_bank.bin
+SHA256SUMS.txt
+*.elf
+*.gba
+*.map
+*.sav
+.DS_Store
