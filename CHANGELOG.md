@@ -15,6 +15,8 @@
 - Add a dedicated startup selection and Freeze-delay regression.
 - Extend the mGBA regression to require unattended startup to reach `FZ` and
   make its browser assertions independent of the randomly selected sample.
+- Isolate the FIFO continuity profile from the sample bank and UI so its
+  triangle-wave capture measures audio handoffs under screen DMA directly.
 - Make sample-bank tests independent of particular sample filenames, formats,
   and durations.
 

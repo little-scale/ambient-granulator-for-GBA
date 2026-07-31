@@ -9,7 +9,9 @@
 #include <gba_video.h>
 
 static volatile u32 video_frames;
+#ifndef AMBIENT_FIFO_CONTINUITY_PROFILE
 static UiState ui_state EWRAM_DATA;
+#endif
 
 static void vblank_irq(void)
 {
@@ -25,8 +27,40 @@ static void commit_frame(void)
     }
 }
 
+#ifdef AMBIENT_FIFO_CONTINUITY_PROFILE
+static void run_fifo_continuity_profile(void)
+{
+    u32 displayed_frame = 0;
+    ParameterState parameters;
+
+    irqInit();
+    irqSet(IRQ_VBLANK, vblank_irq);
+    irqEnable(IRQ_VBLANK);
+
+    gfx_init();
+    parameters_reset(&parameters);
+    audio_init(0, 0, &parameters, 0, -1, 0);
+    gfx_clear(COLOR_BLACK);
+    commit_frame();
+
+    for (;;) {
+        audio_service();
+        if (video_frames != displayed_frame) {
+            displayed_frame = video_frames;
+            gfx_present();
+            audio_service();
+            commit_frame();
+        }
+    }
+}
+#endif
+
 int main(void)
 {
+#ifdef AMBIENT_FIFO_CONTINUITY_PROFILE
+    run_fifo_continuity_profile();
+    return 0;
+#else
     u32 displayed_frame = 0;
     int frame_pending = 1;
     int bank_valid;
@@ -82,4 +116,5 @@ int main(void)
             audio_service();
         }
     }
+#endif
 }
