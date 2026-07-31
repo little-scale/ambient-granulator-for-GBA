@@ -148,7 +148,8 @@ static void audio_block_irq(void)
 }
 
 void audio_init(const int8_t *sample, u32 length,
-                const ParameterState *parameters)
+                const ParameterState *parameters, u32 random_seed,
+                int startup_center, int startup_grains)
 {
     int line;
     audio_underruns = 0;
@@ -158,8 +159,12 @@ void audio_init(const int8_t *sample, u32 length,
     memset(fast_reverb_delay, 0, sizeof(fast_reverb_delay));
     for (line = 0; line < DSP_FDN_LINES; ++line)
         dsp_set_reverb_line(&dsp_state, line, fast_reverb_delay[line]);
+    dsp_seed_random(&dsp_state, random_seed);
     dsp_set_parameters(&dsp_state, parameters);
     dsp_set_sample(&dsp_state, sample, length);
+    if (startup_center >= 0 && startup_grains > 0)
+        dsp_trigger_burst_count(
+            &dsp_state, startup_center, startup_grains);
 
 #ifdef AMBIENT_FIFO_CONTINUITY_PROFILE
     diagnostic_sample = -96;

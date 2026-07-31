@@ -138,6 +138,16 @@ static void test_scheduler(void)
     dsp_render(&state_a, left_a, right_a, 1);
     assert(state_a.samples_until_grain >= 1);
     assert(state_a.samples_until_grain <= base * 2);
+
+    parameters.value[PARAM_GRAINS] = 8;
+    parameters.value[PARAM_JITTER] = 0;
+    reset_with(&parameters);
+    dsp_seed_random(&state_a, 0x12345678u);
+    assert(state_a.random_state == 0x12345678u);
+    dsp_trigger_burst_count(&state_a, 120, 3);
+    for (frame = 0; frame < base * 4; ++frame)
+        dsp_render(&state_a, left_a, right_a, 1);
+    assert(state_a.grains_started == 3);
 }
 
 static void test_filters(void)

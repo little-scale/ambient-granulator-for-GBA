@@ -103,10 +103,12 @@ typedef struct {
 } DspState;
 
 void dsp_init(DspState *state, DspReverbMemory *reverb_memory);
+void dsp_seed_random(DspState *state, uint32_t seed);
 void dsp_set_parameters(DspState *state, const ParameterState *parameters);
 void dsp_set_sample(DspState *state, const int8_t *sample, uint32_t length);
 void dsp_set_reverb_line(DspState *state, int line, int16_t *delay);
 void dsp_trigger_burst(DspState *state, int center_x);
+void dsp_trigger_burst_count(DspState *state, int center_x, int count);
 void dsp_set_gate(DspState *state, int active, int center_x);
 void dsp_render(DspState *restrict state, int8_t *restrict left,
                 int8_t *restrict right, int count);

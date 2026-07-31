@@ -21,10 +21,9 @@ step instead.
 
 Before making a public release, make sure that every embedded sample may be
 redistributed. The current [sample licence](samples/LICENSE.md) records that
-`piano.wav` is CC BY 4.0 and the remaining bundled WAVs are copyright-free
-source material approved for redistribution. Include `SAMPLE_LICENSE.md` with
-every release, retain the piano attribution, and document the provenance of
-any newly added sample before shipping it.
+Sebastian Tomczak created all five piano recordings and released them under
+CC0 1.0. Include `SAMPLE_LICENSE.md` with every release and document the
+provenance and licence of any newly added sample before shipping it.
 
 An informal physical test has been reported: the ROM generally boots and
 works on a GBA-family console using an unidentified inexpensive flashcart.
@@ -53,7 +52,7 @@ can be recorded.
 4. Build and verify the release from that commit:
 
    ```sh
-   scripts/release.sh v0.1
+   scripts/release.sh v0.11
    ```
 
    This runs the host, patcher, mGBA UI/audio, FIFO-continuity, and 60-second
@@ -69,16 +68,16 @@ can be recorded.
 6. Tag the build commit and push the tag only after the checks pass:
 
    ```sh
-   git tag -a v0.1 -m "Ambient Granulator for GBA v0.1"
-   git push origin v0.1
+   git tag -a v0.11 -m "Ambient Granulator for GBA v0.11"
+   git push origin v0.11
    ```
 
 7. Create the GitHub Release from that tag. Upload these files directly from
    `build/release/`:
-   - `ambient-granulator-for-gba-v0.1.gba`
-   - `ambient-granulator-for-gba-max-load-v0.1.gba`
-   - `ambient-granulator-for-gba-patched-test-v0.1.gba`
-   - `ambient-granulator-gba-patcher-v0.1.html`
+   - `ambient-granulator-for-gba-v0.11.gba`
+   - `ambient-granulator-for-gba-max-load-v0.11.gba`
+   - `ambient-granulator-for-gba-patched-test-v0.11.gba`
+   - `ambient-granulator-gba-patcher-v0.11.html`
    - `SHA256SUMS.txt`
    - `SAMPLE_LICENSE.md`
 

@@ -3,6 +3,7 @@
 #include "audio.h"
 #include "font.h"
 #include "gfx.h"
+#include "startup.h"
 #include "text_format.h"
 
 #include <gba_input.h>
@@ -306,8 +307,9 @@ static void edit_parameter(UiState *state, ParameterId id, u16 directions)
     }
 }
 
-int ui_init(UiState *state)
+int ui_init(UiState *state, u32 random_seed)
 {
+    u32 sample_index;
     memset(state, 0, sizeof(*state));
     parameters_reset(&state->parameters);
     state->selected_parameter = PARAM_RANGE;
@@ -315,11 +317,20 @@ int ui_init(UiState *state)
     state->view = UI_VIEW_PERFORMANCE;
     state->return_view = UI_VIEW_PERFORMANCE;
     state->dirty = 1;
-    if (!sample_bank_open_embedded(&state->bank)
-            || !sample_bank_get(&state->bank, 0, &state->sample)) {
+    if (!sample_bank_open_embedded(&state->bank)) {
         state->view = UI_VIEW_BANK_ERROR;
         return 0;
     }
+    sample_index = startup_sample_index(random_seed, state->bank.count);
+    if (!sample_bank_get(&state->bank, sample_index, &state->sample)) {
+        state->view = UI_VIEW_BANK_ERROR;
+        return 0;
+    }
+    state->sample_index = sample_index;
+    state->browser_index = sample_index;
+    state->startup_target_grains = STARTUP_GRAIN_COUNT;
+    state->startup_freeze_delay_frames = (u16)startup_freeze_delay_frames(
+        state->parameters.value[PARAM_LENGTH]);
     return 1;
 }
 
@@ -328,6 +339,8 @@ void ui_handle_input(UiState *state, u16 held, u16 pressed,
 {
     u16 directions = repeated & (KEY_LEFT | KEY_RIGHT | KEY_UP | KEY_DOWN);
 
+    if ((pressed | released | repeated) != 0)
+        state->startup_target_grains = 0;
     if (state->view == UI_VIEW_BANK_ERROR)
         return;
     if (state->view == UI_VIEW_BROWSER) {
@@ -429,6 +442,18 @@ void ui_tick(UiState *state)
 {
     int index;
     u8 marker_x;
+
+    if (state->startup_target_grains != 0
+            && audio_grains_started() >= state->startup_target_grains) {
+        if (state->startup_freeze_delay_frames > 0) {
+            --state->startup_freeze_delay_frames;
+        } else {
+            state->parameters.value[PARAM_REVERB_FREEZE] = 1;
+            audio_set_parameters(&state->parameters);
+            state->startup_target_grains = 0;
+            state->dirty = 1;
+        }
+    }
 
 #ifdef AMBIENT_FIFO_CONTINUITY_PROFILE
     /* Exercise FIFO handoffs while Mode 4 screen DMA runs every frame. */

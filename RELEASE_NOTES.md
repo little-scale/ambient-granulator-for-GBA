@@ -1,42 +1,28 @@
-# Ambient Granulator for GBA v0.1
+# Ambient Granulator for GBA v0.11
 
-This first GBA release delivers the complete four-voice instrument, stereo FDN
-reverb and Freeze, post-reverb filters, embedded sample browser, and offline
-single-file ROM patcher described in `task.txt`.
+This release turns power-on into a performance gesture. Ambient Granulator now
+chooses one of five embedded piano recordings, begins an eight-grain burst
+immediately, lets the complete burst populate the stereo reverb, and then
+enables Freeze automatically to sustain the resulting texture. Pressing any
+control before the automatic Freeze step cancels it and hands control directly
+to the performer.
 
-Feedback is adjustable from 0.0% through 99.9% in 0.1% steps. Freeze remains a
-separate exact-unity mode that stops new FDN input without silencing new dry
-grains. The Direct Sound streamer now mirrors the following block and resumes
-an on-time handoff at sample zero, correcting an earlier 16-sample offset that
-could drop the start of each new block and create audible discontinuities.
-Actual late handoffs advance only by complete FIFO requests. A deterministic
-triangle-wave emulator capture now checks that handoffs neither drop nor
-repeat samples.
-A waveform-continuing 32-sample tail now smooths busy-voice reuse and sample
-changes and reaches an exact zero endpoint. The normal preset now starts with
-a gentle 4 kHz LPF to suppress sharp PCM8 source edges while retaining full
-user control through LPF bypass. All four FDN delay lines live in fast internal RAM, while block-based
-grain mixing, cached voice state, and pre-scaled stereo envelope ramps reduce
-the ARM7 hot path. The official maximum-load profile retains the complete
-four-line FDN and a 2 kHz LPF, bypasses HPF, and holds U000 at C58 during the
-corrected 60-second active-path mGBA soak.
+The pseudorandom startup state advances between sessions in the first 12 bytes
+of a conventional 32 KiB SRAM save. The ROM declares `SRAM_V113` for emulator
+and flashcart save-type detection. Version 0.1 did not store user data, so
+there is no save migration requirement.
 
-The stock ROM now contains all ten WAV files supplied in `samples/`. Every
-non-silent input is downmixed, resampled to 16,384 Hz, normalised to −0.3 dBFS,
-and quantised to signed PCM8 during the deterministic build.
+The embedded bank now contains five original piano recordings created by
+Sebastian Tomczak and released under CC0 1.0. The release includes the sample
+licence and provenance notice.
 
-Automated verification covers host DSP/unit tests; dedicated single-grain,
-maximum-gain, maximum-feedback, impulse-reverb, Freeze-after-impulse,
-repeated-Freeze, HPF/LPF-response, and real-sample maximum-load WAV renders;
-LPF shaping of frozen output without changing the FDN memories; normalization
-of all ten samples; GBA header and sample-bank checks; browser-patched ROM
-reopen/CRC validation; and mGBA interaction, stereo, steady-grain
-discontinuity, deterministic FIFO continuity, load, and zero-underrun
-regressions.
+Tests now cover startup seed mixing, random sample-index bounds, configurable
+startup burst length, the post-grain Freeze delay, and an unattended mGBA boot
+that must display `FZ`. Sample-bank checks no longer depend on the previous
+filenames or formats.
 
-The release is emulator-verified. Physical flashcart boot, ten-minute load,
-60-second hardware Freeze, and analogue stereo checks remain the documented
-manual release gates. The release bundle includes checksum-pinned normal,
-maximum-load, and patcher-produced test ROMs plus a structured
-`HARDWARE_ACCEPTANCE.md` result sheet so those gates can be run without a
-development toolchain.
+Verification: host DSP and sample-bank tests, offline patcher tests, and mGBA
+UI/audio/FIFO/max-load regressions passed. A basic physical GBA-family
+boot/play test was previously reported with an unidentified budget flashcart.
+The new startup and SRAM behaviour remains emulator-verified; full flashcart
+and analogue-audio qualification has not been recorded.

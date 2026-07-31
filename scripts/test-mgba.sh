@@ -116,13 +116,41 @@ docker run --rm \
         }
 
         # Avoid screenshot polling here: repeated X11 captures can starve the
-        # cycle-accurate emulator during startup.
-        sleep 2
+        # cycle-accurate emulator during startup. Four seconds also gives the
+        # unattended startup burst time to seed the reverb and enable Freeze.
+        sleep 4
         capture build/mgba-test/boot.png
         assert_black build/mgba-test/boot.png 20 20
         assert_white build/mgba-test/boot.png 240 10
         assert_white build/mgba-test/boot.png 208 288
         assert_black build/mgba-test/boot.png 20 316
+        startup_freeze=$(convert build/mgba-test/boot.png \
+            -crop 22x14+340+288 +repage -filter point -resize 11x7! \
+            -depth 8 gray:- | perl -e '\''
+                local $/;
+                my @pixels = unpack("C*", <STDIN>);
+                my @expected = (
+                    "31,16,16,30,16,16,16",
+                    "31,1,2,4,8,16,31"
+                );
+                for my $letter (0 .. 1) {
+                    my @rows;
+                    for my $y (0 .. 6) {
+                        my $row = 0;
+                        for my $x (0 .. 4) {
+                            my $pixel = $pixels[$y * 11 + $letter * 6 + $x];
+                            $row |= 1 << (4 - $x) if $pixel > 128;
+                        }
+                        push @rows, $row;
+                    }
+                    exit 1 if join(",", @rows) ne $expected[$letter];
+                }
+                print "ok";
+            '\'' || true)
+        if [ "$startup_freeze" != ok ]; then
+            echo "Unattended startup did not reach Freeze mode" >&2
+            exit 1
+        fi
 
         # R+D-pad edits Pitch in Performance view and updates its readout.
         xdotool keydown --window "$window" s
@@ -212,7 +240,18 @@ docker run --rm \
         sleep 0.5
         capture build/mgba-test/browser.png
         assert_white build/mgba-test/browser.png 2 2
-        assert_black build/mgba-test/browser.png 10 40
+        browser_selection=""
+        for y in 36 62 88 114 140 166 192 218 244 270; do
+            value=$(gray_at build/mgba-test/browser.png 6 "$y")
+            if [ "$value" -lt 15 ]; then
+                browser_selection=ok
+                break
+            fi
+        done
+        if [ "$browser_selection" != ok ]; then
+            echo "Sample browser has no selected row" >&2
+            exit 1
+        fi
 
         tap_key Down
         capture build/mgba-test/browser-next.png

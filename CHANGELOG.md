@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.11 — 2026-07-31
+
+- Replace the original ten-sample bank with five author-created piano
+  recordings released under CC0 1.0.
+- Choose a pseudorandom embedded sample on every boot and advance the startup
+  state in SRAM for new choices across sessions.
+- Begin an eight-grain burst immediately, wait for the complete burst to seed
+  the reverb, and enable Freeze automatically for an instant sustained
+  texture.
+- Cancel the pending automatic Freeze when the performer presses a control,
+  preserving immediate manual control during startup.
+- Seed grain-position randomization from the per-boot startup state.
+- Add a dedicated startup selection and Freeze-delay regression.
+- Extend the mGBA regression to require unattended startup to reach `FZ` and
+  make its browser assertions independent of the randomly selected sample.
+- Make sample-bank tests independent of particular sample filenames, formats,
+  and durations.
+
 ## 0.1 — 2026-07-14
 
 - Rebuild Ambient Granulator natively for Game Boy Advance.

@@ -1,11 +1,14 @@
 # Ambient Granulator for GBA
 
+**Current release: v0.11 — emulator-verified; basic physical-hardware
+boot/play test reported.**
+
 Ambient Granulator for GBA is a native Game Boy Advance granular instrument.
 It combines a four-voice grain engine, sample-accurate burst scheduler, stereo
 feedback-delay-network reverb, stable Freeze, post-reverb filters, an embedded
 ROM sample browser, and a completely offline sample patcher.
 
-The included build embeds all ten WAV files currently in `samples/` as signed
+The included build embeds all WAV files currently in `samples/` as signed
 mono PCM8 at exactly 16,384 Hz. Each non-silent file is peak-normalised to
 −0.3 dBFS before quantisation. The ROM uses a black-and-white 240×160 interface
 inspired by the original Ambient Granulator for Nintendo DS while rebuilding
@@ -16,6 +19,12 @@ the hardware layer for GBA Direct Sound.
 Copy `ambient-granulator-for-gba.gba` to a GBA flashcart or open it in mGBA.
 For stereo panning and reverb, use headphones or a stereo line capture; the
 GBA's built-in speaker is mono.
+
+At startup, the instrument chooses a sample from the embedded bank, begins an
+eight-grain burst immediately, lets the grains seed the reverb, and then turns
+Freeze on automatically. The pseudorandom startup state is advanced in SRAM,
+so subsequent boots produce new sample and grain choices. Pressing a control
+before the automatic Freeze step cancels that step and hands control to you.
 
 The release bundle also includes checksum-pinned maximum-load and
 patcher-produced test ROMs. Use `HARDWARE_ACCEPTANCE.md` to run and record the
@@ -182,11 +191,10 @@ the wording appropriate for the current level of hardware evidence.
 
 ## Licence and provenance
 
-Software is MIT licensed; see `LICENSE`. `samples/piano.wav` is CC BY 4.0 and
-the other bundled WAVs are copyright-free source material approved for
-redistribution; see `samples/LICENSE.md` for provenance and attribution. The
-NDS reference is MIT licensed and is used as the behavioural and visual
-reference.
+Software is MIT licensed; see `LICENSE`. Sebastian Tomczak created the five
+bundled piano recordings and released them under CC0 1.0; see
+`samples/LICENSE.md` for the public-domain dedication and provenance. The NDS
+reference is MIT licensed and is used as the behavioural and visual reference.
 
 - [devkitPro](https://devkitpro.org/)
 - [GBATEK](https://mgba-emu.github.io/gbatek/)

@@ -19,7 +19,8 @@ extern volatile u32 audio_blocks_rendered;
 extern volatile u32 worst_mix_cycles;
 
 void audio_init(const int8_t *sample, u32 length,
-                const ParameterState *parameters);
+                const ParameterState *parameters, u32 random_seed,
+                int startup_center, int startup_grains);
 void audio_service(void);
 void audio_set_parameters(const ParameterState *parameters);
 void audio_set_sample(const int8_t *sample, u32 length);

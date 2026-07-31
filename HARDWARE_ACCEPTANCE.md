@@ -1,6 +1,6 @@
 # Physical GBA Acceptance Record
 
-Use this record to qualify Ambient Granulator for GBA v0.1 on real hardware.
+Use this record to qualify Ambient Granulator for GBA v0.11 on real hardware.
 Do not mark the release hardware-qualified if any required check fails.
 
 ## Preliminary hardware evidence
@@ -30,22 +30,24 @@ shasum -a 256 -c SHA256SUMS.txt
 
 The release contains three ROMs for distinct checks:
 
-- `ambient-granulator-for-gba-v0.1.gba`: normal instrument.
-- `ambient-granulator-for-gba-max-load-v0.1.gba`: four active grain voices,
+- `ambient-granulator-for-gba-v0.11.gba`: normal instrument.
+- `ambient-granulator-for-gba-max-load-v0.11.gba`: four active grain voices,
   500 ms grains, maximum trigger density, 99% feedback, the complete four-line
   FDN, animated markers, and a 2 kHz LPF. HPF is deliberately bypassed in this
   stress profile.
-- `ambient-granulator-for-gba-patched-test-v0.1.gba`: patcher-produced ROM
-  with the ten release samples plus an appended `PATCHER TEST TONE`.
+- `ambient-granulator-for-gba-patched-test-v0.11.gba`: patcher-produced ROM
+  with the five release samples plus an appended `PATCHER TEST TONE`.
 
 ## Normal instrument
 
-Boot `ambient-granulator-for-gba-v0.1.gba` and use headphones or a stereo
+Boot `ambient-granulator-for-gba-v0.11.gba` and use headphones or a stereo
 line capture.
 
 | Required check | Result | Notes |
 | --- | --- | --- |
 | Boots to the monochrome Performance view | PASS / FAIL |  |
+| Starts grains automatically and reaches `FZ` without input | PASS / FAIL |  |
+| Creates/preserves a save and varies startup choices across cold boots | PASS / FAIL |  |
 | Waveform is intact and the lowest display row is unused | PASS / FAIL |  |
 | D-pad movement and A/B/L/R/Start/Select respond immediately | PASS / FAIL |  |
 | A+D-pad changes Range; R+D-pad changes Pitch | PASS / FAIL |  |
@@ -59,20 +61,15 @@ that its waveform and audio are valid.
 
 | Embedded sample | Audio | Waveform | No click on load |
 | --- | --- | --- | --- |
-| `1` | PASS / FAIL | PASS / FAIL | PASS / FAIL |
-| `110bpm F - 01 - Hiskee Vocalpack` | PASS / FAIL | PASS / FAIL | PASS / FAIL |
-| `130bpm Am - 05 - Hiskee Vocalpack` | PASS / FAIL | PASS / FAIL | PASS / FAIL |
-| `2` | PASS / FAIL | PASS / FAIL | PASS / FAIL |
-| `3` | PASS / FAIL | PASS / FAIL | PASS / FAIL |
-| `4` | PASS / FAIL | PASS / FAIL | PASS / FAIL |
-| `5` | PASS / FAIL | PASS / FAIL | PASS / FAIL |
-| `6` | PASS / FAIL | PASS / FAIL | PASS / FAIL |
-| `piano` | PASS / FAIL | PASS / FAIL | PASS / FAIL |
-| `sample1` | PASS / FAIL | PASS / FAIL | PASS / FAIL |
+| `01 - piano` | PASS / FAIL | PASS / FAIL | PASS / FAIL |
+| `03 - piano` | PASS / FAIL | PASS / FAIL | PASS / FAIL |
+| `05 - piano` | PASS / FAIL | PASS / FAIL | PASS / FAIL |
+| `07 - piano` | PASS / FAIL | PASS / FAIL | PASS / FAIL |
+| `18 - piano` | PASS / FAIL | PASS / FAIL | PASS / FAIL |
 
 ## Maximum-load and Freeze soak
 
-Boot `ambient-granulator-for-gba-max-load-v0.1.gba`.
+Boot `ambient-granulator-for-gba-max-load-v0.11.gba`.
 
 1. Hold A continuously for ten minutes without leaving Performance view.
 2. Move Position and edit parameters several times while audio continues.
@@ -94,14 +91,14 @@ Boot `ambient-granulator-for-gba-max-load-v0.1.gba`.
 
 ## Patched ROM
 
-Boot `ambient-granulator-for-gba-patched-test-v0.1.gba`, open the browser,
+Boot `ambient-granulator-for-gba-patched-test-v0.11.gba`, open the browser,
 select the final `PATCHER TEST TONE`, and trigger it. This is the deterministic
 hardware check for the offline patcher's exported bank.
 
 | Required check | Result | Notes |
 | --- | --- | --- |
 | Patched ROM boots from flashcart | PASS / FAIL |  |
-| Eleven samples appear in the browser | PASS / FAIL |  |
+| Six samples appear in the browser | PASS / FAIL |  |
 | `PATCHER TEST TONE` waveform is intact | PASS / FAIL |  |
 | Test tone produces clean audio | PASS / FAIL |  |
 | Switching between patched samples does not click | PASS / FAIL |  |

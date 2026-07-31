@@ -31,10 +31,12 @@ typedef struct {
     int b_used;
     u8 dirty;
     u8 status_frames;
+    u16 startup_freeze_delay_frames;
+    u32 startup_target_grains;
     UiGrainMarker markers[16];
 } UiState;
 
-int ui_init(UiState *state);
+int ui_init(UiState *state, u32 random_seed);
 void ui_handle_input(UiState *state, u16 held, u16 pressed,
                      u16 released, u16 repeated);
 void ui_tick(UiState *state);

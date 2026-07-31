@@ -28,7 +28,7 @@ int main(void)
     long size;
     uint32_t pcm_offset;
     uint32_t index;
-    uint32_t piano_index = UINT32_MAX;
+    uint32_t test_index = 0;
     SampleBank bank;
     SampleBankEntry entry;
 
@@ -48,20 +48,17 @@ int main(void)
         assert(sample_bank_get(&bank, index, &entry));
         assert(entry.name[0] != '\0');
         assert((((uintptr_t)entry.pcm - (uintptr_t)data) & 31u) == 0);
-        if (strcmp(entry.name, "piano") == 0)
-            piano_index = index;
     }
-    assert(piano_index != UINT32_MAX);
-    assert(sample_bank_get(&bank, piano_index, &entry));
-    assert(entry.length == 16u * SAMPLE_BANK_RATE);
-    pcm_offset = read_u32(data + 64 + piano_index * 64 + 32);
+    assert(sample_bank_get(&bank, test_index, &entry));
+    assert(entry.length > 0);
+    pcm_offset = read_u32(data + 64 + test_index * 64 + 32);
 
     memcpy(copy, data, (size_t)size);
-    write_u32(copy + 64 + piano_index * 64 + 32, pcm_offset + 1);
+    write_u32(copy + 64 + test_index * 64 + 32, pcm_offset + 1);
     assert(!sample_bank_open(&bank, copy, (size_t)size));
 
     memcpy(copy, data, (size_t)size);
-    memset(copy + 64 + piano_index * 64, 'X', 32);
+    memset(copy + 64 + test_index * 64, 'X', 32);
     assert(!sample_bank_open(&bank, copy, (size_t)size));
 
     memcpy(copy, data, (size_t)size);

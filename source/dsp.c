@@ -517,6 +517,11 @@ void dsp_set_reverb_line(DspState *state, int line, int16_t *delay)
         state->reverb_delay[line] = delay;
 }
 
+void dsp_seed_random(DspState *state, uint32_t seed)
+{
+    state->random_state = seed != 0 ? seed : 0x6d2b79f5u;
+}
+
 void dsp_set_parameters(DspState *state, const ParameterState *parameters)
 {
     state->parameters = *parameters;
@@ -539,12 +544,25 @@ void dsp_set_sample(DspState *state, const int8_t *sample, uint32_t length)
 
 void dsp_trigger_burst(DspState *state, int center_x)
 {
+    dsp_trigger_burst_count(
+        state, center_x, state->parameters.value[PARAM_GRAINS]);
+}
+
+void dsp_trigger_burst_count(DspState *state, int center_x, int count)
+{
     if (center_x < 0)
         center_x = 0;
     if (center_x > 239)
         center_x = 239;
+    if (count < 1) {
+        state->burst_remaining = 0;
+        state->samples_until_grain = 0;
+        return;
+    }
+    if (count > 32)
+        count = 32;
     state->burst_center = center_x;
-    state->burst_remaining = state->parameters.value[PARAM_GRAINS];
+    state->burst_remaining = count;
     state->samples_until_grain = 0;
     state->random_state ^= ((uint32_t)center_x << 16) ^ state->grains_started;
 }
