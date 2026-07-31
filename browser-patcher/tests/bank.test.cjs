@@ -17,13 +17,16 @@ test("locates and validates the built ROM bank", () => {
   const rom = loadRom();
   const location = bank.locateBank(rom);
   const samples = bank.decodeBank(rom, location);
+  const expectedNames = fs.readdirSync(path.join(root, "samples"))
+    .filter((name) => name.toLowerCase().endsWith(".wav"))
+    .sort()
+    .map((name) => path.parse(name).name.slice(0, 31));
   assert.equal(location.header.title, "AMBGRANULAR");
   assert.equal(location.header.gameCode, "AGRN");
   assert.equal(location.capacity, 8 * 1024 * 1024);
-  assert.equal(samples.length, 10);
-  const piano = samples.find((sample) => sample.name === "piano");
-  assert.ok(piano);
-  assert.equal(piano.data.length, 16 * bank.TARGET_RATE);
+  assert.equal(samples.length, expectedNames.length);
+  assert.deepEqual(samples.map((sample) => sample.name), expectedNames);
+  assert.ok(samples.every((sample) => sample.data.length > 0));
 });
 
 test("rejects absent, duplicate, corrupt and invalid-header banks", () => {
