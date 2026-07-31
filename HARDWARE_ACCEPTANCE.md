@@ -1,6 +1,6 @@
 # Physical GBA Acceptance Record
 
-Use this record to qualify Ambient Granulator for GBA v0.12 on real hardware.
+Use this record to qualify Ambient Granulator for GBA v0.13 on real hardware.
 Do not mark the release hardware-qualified if any required check fails.
 
 ## Preliminary hardware evidence
@@ -30,25 +30,27 @@ shasum -a 256 -c SHA256SUMS.txt
 
 The release contains three ROMs for distinct checks:
 
-- `ambient-granulator-for-gba-v0.12.gba`: normal instrument.
-- `ambient-granulator-for-gba-max-load-v0.12.gba`: four active grain voices,
+- `ambient-granulator-for-gba-v0.13.gba`: normal instrument.
+- `ambient-granulator-for-gba-max-load-v0.13.gba`: four active grain voices,
   500 ms grains, maximum trigger density, 99% feedback, the complete four-line
   FDN, animated markers, and a 2 kHz LPF. HPF is deliberately bypassed in this
   stress profile.
-- `ambient-granulator-for-gba-patched-test-v0.12.gba`: patcher-produced ROM
+- `ambient-granulator-for-gba-patched-test-v0.13.gba`: patcher-produced ROM
   with the five release samples plus an appended `PATCHER TEST TONE`.
 
 ## Normal instrument
 
-Boot `ambient-granulator-for-gba-v0.12.gba` and use headphones or a stereo
+Boot `ambient-granulator-for-gba-v0.13.gba` and use headphones or a stereo
 line capture.
 
 | Required check | Result | Notes |
 | --- | --- | --- |
 | Boots to the waveform view with `KIOSK MODE` visible | PASS / FAIL |  |
 | Starts grains automatically and reaches `FZ` without input | PASS / FAIL |  |
+| Normal preset reports `REV` at 100% | PASS / FAIL |  |
 | Creates/preserves a save and varies startup choices across cold boots | PASS / FAIL |  |
-| Kiosk changes sample/pitch twice at intervals of 30–60 seconds | PASS / FAIL |  |
+| Kiosk changes sample, pitch, position, and Range twice at 30–60 second intervals | PASS / FAIL |  |
+| Kiosk pitches are limited to 0, +7, or +12 semitones | PASS / FAIL |  |
 | Each kiosk cycle leaves Freeze off while seeding, then restores `FZ` | PASS / FAIL |  |
 | First button input hides `KIOSK MODE`; no later cycle occurs | PASS / FAIL |  |
 | Waveform is intact and the lowest display row is unused | PASS / FAIL |  |
@@ -72,7 +74,7 @@ that its waveform and audio are valid.
 
 ## Maximum-load and Freeze soak
 
-Boot `ambient-granulator-for-gba-max-load-v0.12.gba`.
+Boot `ambient-granulator-for-gba-max-load-v0.13.gba`.
 
 1. Hold A continuously for ten minutes without leaving Performance view.
 2. Move Position and edit parameters several times while audio continues.
@@ -94,7 +96,7 @@ Boot `ambient-granulator-for-gba-max-load-v0.12.gba`.
 
 ## Patched ROM
 
-Boot `ambient-granulator-for-gba-patched-test-v0.12.gba`, open the browser,
+Boot `ambient-granulator-for-gba-patched-test-v0.13.gba`, open the browser,
 select the final `PATCHER TEST TONE`, and trigger it. This is the deterministic
 hardware check for the offline patcher's exported bank.
 

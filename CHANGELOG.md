@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.13 — 2026-08-01
+
+- Set the normal startup preset to 100% reverb wet level.
+- Randomize the waveform centre position and symmetric 0–128 pixel Range for
+  every unattended kiosk texture refresh.
+- Restrict kiosk transposition to 0, +7, and +12 semitones so unattended
+  textures do not become muddy at negative pitches.
+
 ## 0.12 — 2026-07-31
 
 - Add an idle-only kiosk mode that changes to a different random sample every

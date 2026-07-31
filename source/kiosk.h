@@ -6,7 +6,9 @@
 enum {
     KIOSK_FRAMES_PER_SECOND = 60,
     KIOSK_MIN_INTERVAL_FRAMES = 30 * KIOSK_FRAMES_PER_SECOND,
-    KIOSK_MAX_INTERVAL_FRAMES = 60 * KIOSK_FRAMES_PER_SECOND
+    KIOSK_MAX_INTERVAL_FRAMES = 60 * KIOSK_FRAMES_PER_SECOND,
+    KIOSK_WAVEFORM_COLUMNS = 240,
+    KIOSK_MAX_GRAIN_RANGE = 128
 };
 
 typedef struct {
@@ -20,6 +22,8 @@ int kiosk_cancel_on_input(KioskState *state, uint16_t recognised_input);
 int kiosk_tick(KioskState *state);
 uint32_t kiosk_choose_sample(KioskState *state, uint32_t sample_count,
                              uint32_t current_sample);
+uint16_t kiosk_choose_position(KioskState *state);
+int kiosk_choose_range(KioskState *state);
 int kiosk_choose_pitch(KioskState *state);
 
 #endif

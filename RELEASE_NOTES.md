@@ -1,28 +1,24 @@
-# Ambient Granulator for GBA v0.12
+# Ambient Granulator for GBA v0.13
 
-This release adds an unattended kiosk mode for continuously evolving ambient
-textures. The ROM opens on the Performance waveform with `KIOSK MODE` visible.
-While no control input has been recognised, it waits a newly randomized
-30–60 seconds between cycles, loads a different random sample, disables
-Freeze, chooses −12, −7, 0, +7, or +12 semitones, and plays the configured
-grain burst. Once those grains have seeded the stereo reverb, Freeze is
-restored and the texture sustains until the next cycle.
+This release retunes unattended kiosk textures for a clearer, more varied
+result. The normal preset now starts at `REV 100`, producing a completely wet
+texture while retaining the established stereo FDN width model.
 
-The first recognised GBA button input permanently stops kiosk automation for
-that session and immediately cancels any pending automatic Freeze. Emulator or
-host gestures mapped to GBA buttons behave the same way. The performer keeps
-direct control without the kiosk resuming later.
+Every kiosk refresh chooses a different random sample, a centre anywhere
+across the waveform, and a symmetric Range from 0–128 pixels. Transposition is
+now restricted to 0, +7, or +12 semitones; the muddy −7 and −12 choices have
+been removed. The cycle still disables Freeze, plays the configured grain
+burst, waits for those grains to seed the reverb, and then restores Freeze.
 
-The existing randomized power-on behavior remains: one of the five embedded
-piano recordings begins an eight-grain burst immediately, seeds the reverb,
-and reaches Freeze automatically if no input interrupts it. The pseudorandom
-startup state continues to advance in the first 12 bytes of a conventional
-32 KiB `SRAM_V113` save.
+Kiosk mode remains strictly unattended. The first recognised GBA button input
+permanently stops its automation for that session and cancels any pending
+automatic Freeze. Emulator or host gestures mapped to GBA buttons behave the
+same way.
 
-Tests cover the 30–60 second bounds, non-repeating sample choice, five allowed
-pitch values, permanent first-input cancellation, the default waveform view,
-the visible kiosk indicator, and its dismissal on input. The project author
-also confirmed kiosk mode working in mGBA.
+Tests cover the full position and Range bounds, narrow and wide selections,
+the three nonnegative pitch choices, non-repeating sample selection, randomized
+30–60 second timing, and permanent first-input cancellation. The project
+author confirmed that the current tuning sounds improved in mGBA.
 
 The five embedded piano recordings were created by Sebastian Tomczak and
 released under CC0 1.0. The release includes the sample licence and provenance
@@ -31,5 +27,5 @@ notice.
 Verification: host DSP and sample-bank tests, offline patcher tests, and mGBA
 UI/audio/FIFO/max-load regressions passed. A basic physical GBA-family
 boot/play test was previously reported with an unidentified budget flashcart.
-Kiosk mode remains emulator-verified; full flashcart and analogue-audio
+The v0.13 tuning remains emulator-verified; full flashcart and analogue-audio
 qualification has not been recorded.

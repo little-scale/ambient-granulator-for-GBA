@@ -15,7 +15,7 @@ int main(void)
     assert(state.value[PARAM_FINE_DEVIATION] == 0);
     assert(state.value[PARAM_BPM] == 98);
     assert(state.value[PARAM_GRAINS] == 8);
-    assert(state.value[PARAM_REVERB] == 70);
+    assert(state.value[PARAM_REVERB] == 100);
     assert(state.value[PARAM_REVERB_FEEDBACK] == 990);
     assert(state.value[PARAM_LOWPASS] == 4000);
 

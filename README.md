@@ -1,6 +1,6 @@
 # Ambient Granulator for GBA
 
-**Current release: v0.12 — emulator-verified; basic physical-hardware
+**Current release: v0.13 — emulator-verified; basic physical-hardware
 boot/play test reported.**
 
 Ambient Granulator for GBA is a native Game Boy Advance granular instrument.
@@ -25,13 +25,16 @@ eight-grain burst immediately, lets the grains seed the reverb, and then turns
 Freeze on automatically. The Performance waveform is the default view and
 shows `KIOSK MODE` while the instrument has received no control input. Every
 randomly selected 30–60 seconds, kiosk mode loads a different random sample,
-turns Freeze off, selects −12, −7, 0, +7, or +12 semitones, plays the configured
-number of grains, and restores Freeze after the grains seed the reverb.
+chooses a new centre anywhere across the waveform and a symmetric Range from
+0–128 pixels, turns Freeze off, selects 0, +7, or +12 semitones, plays the
+configured number of grains, and restores Freeze after the grains seed the
+reverb.
 
 The pseudorandom startup state is advanced in SRAM, so subsequent boots
 produce new sample and grain choices. Any recognised GBA button input
 (including an emulator or host gesture mapped to a button) permanently stops
 kiosk mode for that session and cancels any pending automatic Freeze.
+The normal startup preset sets `REV` to 100% for a completely wet texture.
 
 The release bundle also includes checksum-pinned maximum-load and
 patcher-produced test ROMs. Use `HARDWARE_ACCEPTANCE.md` to run and record the

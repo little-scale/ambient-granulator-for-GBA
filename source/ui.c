@@ -314,6 +314,8 @@ static void start_kiosk_texture(UiState *state)
     state->sample = entry;
     state->sample_index = sample_index;
     state->browser_index = sample_index;
+    state->position = (int)kiosk_choose_position(&state->kiosk);
+    state->parameters.value[PARAM_RANGE] = kiosk_choose_range(&state->kiosk);
     state->parameters.value[PARAM_PITCH] = kiosk_choose_pitch(&state->kiosk);
     state->parameters.value[PARAM_REVERB_FREEZE] = 0;
     audio_set_parameters(&state->parameters);

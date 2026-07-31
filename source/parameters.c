@@ -57,7 +57,7 @@ void parameters_reset(ParameterState *state)
     static const int defaults[PARAM_COUNT] = {
         24, 0, 0, 0, 0, 1, 98, 0, 120, 20, 8,
         420, 50, 50, 0, 100, 0, 100,
-        70, 990, 100, 10, 0, 0, 4000
+        100, 990, 100, 10, 0, 0, 4000
     };
 #endif
     int index;

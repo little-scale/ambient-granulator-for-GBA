@@ -63,9 +63,21 @@ uint32_t kiosk_choose_sample(KioskState *state, uint32_t sample_count,
     return choice >= current_sample ? choice + 1u : choice;
 }
 
+uint16_t kiosk_choose_position(KioskState *state)
+{
+    return (uint16_t)(((uint64_t)next_random(state)
+                       * KIOSK_WAVEFORM_COLUMNS) >> 32);
+}
+
+int kiosk_choose_range(KioskState *state)
+{
+    return (int)(((uint64_t)next_random(state)
+                  * (KIOSK_MAX_GRAIN_RANGE + 1u)) >> 32);
+}
+
 int kiosk_choose_pitch(KioskState *state)
 {
-    static const int pitches[5] = { -12, -7, 0, 7, 12 };
-    uint32_t index = (uint32_t)(((uint64_t)next_random(state) * 5u) >> 32);
+    static const int pitches[3] = { 0, 7, 12 };
+    uint32_t index = (uint32_t)(((uint64_t)next_random(state) * 3u) >> 32);
     return pitches[index];
 }
