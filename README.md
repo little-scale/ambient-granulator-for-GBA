@@ -1,6 +1,6 @@
 # Ambient Granulator for GBA
 
-**Current release: v0.11 — emulator-verified; basic physical-hardware
+**Current release: v0.12 — emulator-verified; basic physical-hardware
 boot/play test reported.**
 
 Ambient Granulator for GBA is a native Game Boy Advance granular instrument.
@@ -22,15 +22,22 @@ GBA's built-in speaker is mono.
 
 At startup, the instrument chooses a sample from the embedded bank, begins an
 eight-grain burst immediately, lets the grains seed the reverb, and then turns
-Freeze on automatically. The pseudorandom startup state is advanced in SRAM,
-so subsequent boots produce new sample and grain choices. Pressing a control
-before the automatic Freeze step cancels that step and hands control to you.
+Freeze on automatically. The Performance waveform is the default view and
+shows `KIOSK MODE` while the instrument has received no control input. Every
+randomly selected 30–60 seconds, kiosk mode loads a different random sample,
+turns Freeze off, selects −12, −7, 0, +7, or +12 semitones, plays the configured
+number of grains, and restores Freeze after the grains seed the reverb.
+
+The pseudorandom startup state is advanced in SRAM, so subsequent boots
+produce new sample and grain choices. Any recognised GBA button input
+(including an emulator or host gesture mapped to a button) permanently stops
+kiosk mode for that session and cancels any pending automatic Freeze.
 
 The release bundle also includes checksum-pinned maximum-load and
 patcher-produced test ROMs. Use `HARDWARE_ACCEPTANCE.md` to run and record the
 complete physical-GBA qualification procedure.
 
-### Performance view
+### Performance (waveform) view
 
 | Control | Action |
 | --- | --- |
@@ -128,7 +135,8 @@ scripts/test-max-load-mgba.sh 60
 
 Host tests cover deterministic sample conversion, bank bounds and CRCs,
 timing, position ranges, pan, wet/dry, pitch, envelope endpoints, filters,
-four-voice scheduling, maximum gain saturation, 60-second 99.9% feedback
+four-voice scheduling, kiosk interval/sample/pitch choices and permanent
+input cancellation, maximum gain saturation, 60-second 99.9% feedback
 stability, 60-second Freeze, and LPF shaping of frozen output without any
 change to the four FDN delay memories. They also render listening WAVs to
 `build/host-tests/` for a single grain, default grains, maximum gain, maximum
@@ -136,11 +144,12 @@ feedback, hard-left/right and impulse reverb, Freeze with new dry grains,
 Freeze after an impulse, repeated Freeze toggles, HPF/LPF responses, and
 maximum load with both smooth and transient-rich source material.
 
-The mGBA regression checks boot pixels, navigation, parameter editing,
-Performance/Edit switching, held triggering, grain markers, Freeze on/off,
-sample browsing, stereo output, zero underruns, and the absence of click-like
-steady-grain discontinuities. The patcher suite creates, reopens,
-independently validates, and emulator-boots a two-sample patched ROM.
+The mGBA regression checks the default waveform view, visible kiosk state and
+first-input cancellation, navigation, parameter editing, Performance/Edit
+switching, held triggering, grain markers, Freeze on/off, sample browsing,
+stereo output, zero underruns, and the absence of click-like steady-grain
+discontinuities. The patcher suite creates, reopens, independently validates,
+and emulator-boots a two-sample patched ROM.
 
 The audio path uses 512-sample double buffers. Each buffer carries a full
 mirror of the following block; the timer handler resumes at sample zero for an

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.12 — 2026-07-31
+
+- Add an idle-only kiosk mode that changes to a different random sample every
+  30–60 seconds, chooses a pitch from −12, −7, 0, +7, or +12 semitones,
+  plays the configured grain burst with Freeze off, and then restores Freeze.
+- Permanently stop kiosk automation on the first recognised button input and
+  show `KIOSK MODE` on the default Performance waveform view while it is active.
+
 ## 0.11 — 2026-07-31
 
 - Replace the original ten-sample bank with five author-created piano

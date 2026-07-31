@@ -1,6 +1,7 @@
 #ifndef AMBGRANULAR_UI_H
 #define AMBGRANULAR_UI_H
 
+#include "kiosk.h"
 #include "parameters.h"
 #include "sample_bank.h"
 
@@ -31,8 +32,9 @@ typedef struct {
     int b_used;
     u8 dirty;
     u8 status_frames;
-    u16 startup_freeze_delay_frames;
-    u32 startup_target_grains;
+    u16 auto_freeze_delay_frames;
+    u32 auto_freeze_target_grains;
+    KioskState kiosk;
     UiGrainMarker markers[16];
 } UiState;
 

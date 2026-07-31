@@ -2,7 +2,7 @@
 set -euo pipefail
 
 project_dir="$(cd "$(dirname "$0")/.." && pwd)"
-version="${1:-v0.11}"
+version="${1:-v0.12}"
 release_dir="$project_dir/build/release"
 
 cd "$project_dir"

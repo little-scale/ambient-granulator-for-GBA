@@ -52,7 +52,7 @@ can be recorded.
 4. Build and verify the release from that commit:
 
    ```sh
-   scripts/release.sh v0.11
+   scripts/release.sh v0.12
    ```
 
    This runs the host, patcher, mGBA UI/audio, FIFO-continuity, and 60-second
@@ -68,16 +68,16 @@ can be recorded.
 6. Tag the build commit and push the tag only after the checks pass:
 
    ```sh
-   git tag -a v0.11 -m "Ambient Granulator for GBA v0.11"
-   git push origin v0.11
+   git tag -a v0.12 -m "Ambient Granulator for GBA v0.12"
+   git push origin v0.12
    ```
 
 7. Create the GitHub Release from that tag. Upload these files directly from
    `build/release/`:
-   - `ambient-granulator-for-gba-v0.11.gba`
-   - `ambient-granulator-for-gba-max-load-v0.11.gba`
-   - `ambient-granulator-for-gba-patched-test-v0.11.gba`
-   - `ambient-granulator-gba-patcher-v0.11.html`
+   - `ambient-granulator-for-gba-v0.12.gba`
+   - `ambient-granulator-for-gba-max-load-v0.12.gba`
+   - `ambient-granulator-for-gba-patched-test-v0.12.gba`
+   - `ambient-granulator-gba-patcher-v0.12.html`
    - `SHA256SUMS.txt`
    - `SAMPLE_LICENSE.md`
 

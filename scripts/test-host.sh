@@ -30,6 +30,10 @@ docker run --rm \
             "build/host-tests/${test}_test"
         done
         gcc -std=c11 -O2 -Wall -Wextra -Werror -Isource \
+            tests/kiosk_test.c source/kiosk.c \
+            -o build/host-tests/kiosk_test
+        build/host-tests/kiosk_test
+        gcc -std=c11 -O2 -Wall -Wextra -Werror -Isource \
             tests/startup_test.c source/startup.c \
             -o build/host-tests/startup_test
         build/host-tests/startup_test

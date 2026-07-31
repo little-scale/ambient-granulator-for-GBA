@@ -124,6 +124,8 @@ docker run --rm \
         assert_white build/mgba-test/boot.png 240 10
         assert_white build/mgba-test/boot.png 208 288
         assert_black build/mgba-test/boot.png 20 316
+        # Waveform view is the default and advertises unattended kiosk mode.
+        assert_white build/mgba-test/boot.png 356 8
         startup_freeze=$(convert build/mgba-test/boot.png \
             -crop 22x14+340+288 +repage -filter point -resize 11x7! \
             -depth 8 gray:- | perl -e '\''
@@ -158,6 +160,8 @@ docker run --rm \
         xdotool keyup --window "$window" s
         sleep 0.12
         capture build/mgba-test/pitch-up.png
+        # The first recognised control permanently dismisses kiosk mode.
+        assert_black build/mgba-test/pitch-up.png 356 8
         assert_changed build/mgba-test/boot.png \
             build/mgba-test/pitch-up.png 10
         tap_key Return

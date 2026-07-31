@@ -16,7 +16,9 @@ enum {
     PERFORMANCE_WAVE_AMPLITUDE = 58,
     PERFORMANCE_CONTENT_BOTTOM = 139,
     PERFORMANCE_STATUS_TOP = 142,
-    PERFORMANCE_STATUS_TEXT_Y = 144
+    PERFORMANCE_STATUS_TEXT_Y = 144,
+    KIOSK_LABEL_X = 178,
+    KIOSK_LABEL_Y = 4
 };
 
 static int waveform_top(const SampleBankEntry *sample, int x,
@@ -122,6 +124,13 @@ static void render_performance(const UiState *state)
     gfx_vline(state->position, 4, PERFORMANCE_CONTENT_BOTTOM - 3,
               COLOR_WHITE);
     audio_service();
+
+    if (state->kiosk.active) {
+        gfx_fill_rect(KIOSK_LABEL_X - 2, KIOSK_LABEL_Y - 2,
+                      63, 11, COLOR_BLACK);
+        font_draw_text(KIOSK_LABEL_X, KIOSK_LABEL_Y,
+                       "KIOSK MODE", COLOR_WHITE);
+    }
 
     gfx_fill_rect(0, PERFORMANCE_STATUS_TOP, SCREEN_WIDTH,
                   SCREEN_HEIGHT - PERFORMANCE_STATUS_TOP, COLOR_BLACK);
@@ -280,6 +289,40 @@ static void load_browser_sample(UiState *state)
     state->dirty = 1;
 }
 
+static void schedule_automatic_freeze(UiState *state, int grain_count)
+{
+    state->auto_freeze_target_grains = audio_grains_started()
+                                     + (u32)grain_count;
+    state->auto_freeze_delay_frames = (u16)startup_freeze_delay_frames(
+        state->parameters.value[PARAM_LENGTH]);
+}
+
+static void start_kiosk_texture(UiState *state)
+{
+    SampleBankEntry entry;
+    u32 sample_index = kiosk_choose_sample(
+        &state->kiosk, state->bank.count, state->sample_index);
+    int grain_count = state->parameters.value[PARAM_GRAINS];
+
+    if (!sample_bank_get(&state->bank, sample_index, &entry)) {
+        state->kiosk.active = 0;
+        state->auto_freeze_target_grains = 0;
+        state->dirty = 1;
+        return;
+    }
+
+    state->sample = entry;
+    state->sample_index = sample_index;
+    state->browser_index = sample_index;
+    state->parameters.value[PARAM_PITCH] = kiosk_choose_pitch(&state->kiosk);
+    state->parameters.value[PARAM_REVERB_FREEZE] = 0;
+    audio_set_parameters(&state->parameters);
+    audio_set_sample(state->sample.pcm, state->sample.length);
+    audio_trigger_burst(state->position);
+    schedule_automatic_freeze(state, grain_count);
+    state->dirty = 1;
+}
+
 static int direction_edit_amount(ParameterId id, u16 directions)
 {
     const ParameterDefinition *definition = &parameter_definitions[id];
@@ -328,9 +371,10 @@ int ui_init(UiState *state, u32 random_seed)
     }
     state->sample_index = sample_index;
     state->browser_index = sample_index;
-    state->startup_target_grains = STARTUP_GRAIN_COUNT;
-    state->startup_freeze_delay_frames = (u16)startup_freeze_delay_frames(
+    state->auto_freeze_target_grains = STARTUP_GRAIN_COUNT;
+    state->auto_freeze_delay_frames = (u16)startup_freeze_delay_frames(
         state->parameters.value[PARAM_LENGTH]);
+    kiosk_init(&state->kiosk, random_seed);
     return 1;
 }
 
@@ -338,9 +382,12 @@ void ui_handle_input(UiState *state, u16 held, u16 pressed,
                      u16 released, u16 repeated)
 {
     u16 directions = repeated & (KEY_LEFT | KEY_RIGHT | KEY_UP | KEY_DOWN);
+    u16 recognised_input = held | pressed | released | repeated;
 
-    if ((pressed | released | repeated) != 0)
-        state->startup_target_grains = 0;
+    if (kiosk_cancel_on_input(&state->kiosk, recognised_input)) {
+        state->auto_freeze_target_grains = 0;
+        state->dirty = 1;
+    }
     if (state->view == UI_VIEW_BANK_ERROR)
         return;
     if (state->view == UI_VIEW_BROWSER) {
@@ -443,17 +490,20 @@ void ui_tick(UiState *state)
     int index;
     u8 marker_x;
 
-    if (state->startup_target_grains != 0
-            && audio_grains_started() >= state->startup_target_grains) {
-        if (state->startup_freeze_delay_frames > 0) {
-            --state->startup_freeze_delay_frames;
+    if (state->auto_freeze_target_grains != 0
+            && audio_grains_started() >= state->auto_freeze_target_grains) {
+        if (state->auto_freeze_delay_frames > 0) {
+            --state->auto_freeze_delay_frames;
         } else {
             state->parameters.value[PARAM_REVERB_FREEZE] = 1;
             audio_set_parameters(&state->parameters);
-            state->startup_target_grains = 0;
+            state->auto_freeze_target_grains = 0;
             state->dirty = 1;
         }
     }
+
+    if (kiosk_tick(&state->kiosk))
+        start_kiosk_texture(state);
 
 #ifdef AMBIENT_FIFO_CONTINUITY_PROFILE
     /* Exercise FIFO handoffs while Mode 4 screen DMA runs every frame. */
