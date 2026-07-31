@@ -253,9 +253,11 @@ docker run --rm \
             exit 1
         fi
 
+        tap_key Left
+        capture build/mgba-test/browser-first.png
         tap_key Down
         capture build/mgba-test/browser-next.png
-        assert_changed build/mgba-test/browser.png \
+        assert_changed build/mgba-test/browser-first.png \
             build/mgba-test/browser-next.png 20
 
         tap_key x
