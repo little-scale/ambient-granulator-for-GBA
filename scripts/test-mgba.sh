@@ -265,6 +265,11 @@ docker run --rm \
         capture build/mgba-test/browser-load.png
         assert_black build/mgba-test/browser-load.png 20 20
 
+        # Startup leaves Freeze enabled. Disable it so the newly loaded sample
+        # exercises both the dry signal and fresh input to the stereo FDN.
+        tap_key a
+        sleep 0.2
+
         # Keep producing grains long enough for an audio regression capture.
         xdotool keydown --window "$window" x
         sleep "$SOAK_SECONDS"
